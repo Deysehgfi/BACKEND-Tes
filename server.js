@@ -1,9 +1,8 @@
-import { createServer } from 'node:http'
-import { readFile, writeFile } from 'node:fs'
+import {createServer} from 'node:http'
+import {readFile , writeFile} from 'node:fs'
 
-const PORT = 3333
+const PORT = 3333;
 
-// Função para ler arquivo
 const lerDadosPessoas = (callback) => {
     readFile('pessoas.json', 'utf-8', (err, data) => {
         if (err) {
@@ -19,21 +18,64 @@ const lerDadosPessoas = (callback) => {
     })
 }
 
-const server = createServer((request, response) => {
-    const { method, url } = request
-    if (method === 'GET' && url === '/usuarios') {
+
+
+const server = createServer((request, response)=>{
+    const {method ,url } = request 
+
+    if(url === '/pessoas' && method === 'GET'){
+        console.log(method, url)
+
+        //ler os dados vindo do pessoa.json
         lerDadosPessoas((err, pessoas) => {
-            if (err) {
-                response.writeHead(500, { 'Content-Type': 'application/json' })
-                response.end(JSON.stringify({ message: 'Erro no servidor' }))
-            } else {
-                response.writeHead(200, { 'Content-Type': 'application/json' })
-                response.end(JSON.stringify(pessoas))
-            }
+                if (err) {
+                    response.writeHead(500, { 'Content-Type': 'application/json' })
+                    response.end(JSON.stringify({ message: 'Erro no servidor' }))
+                } else {
+                    response.writeHead(200, { 'Content-Type': 'application/json' })
+                    response.end(JSON.stringify(pessoas))
+                }
         })
-    }else if(method === 'GET' && url === '/usuarios/'){
-        
-        console.log(method,url)
+    }else if(url === '/pessoas' && method === 'POST'){
+        // cadastra pessoa
+        let body = ''
+        request.on('data', (chunk) => {
+            body += chunk
+        })
+        request.on('end', () => {
+            if (!body) {
+                response.writeHead(400, { 'Content-Type': 'application/json' })
+                response.end(JSON.stringify({ message: 'Corpo da solicitação vazio' }))
+                return
+            }
+         
+
+                const novaPessoa = JSON.parse(body)
+                //ler dados vindos do passoas.json
+                lerDadosPessoas((err, pessoas) => {
+                    if (err) {
+                        response.writeHead(500, { 'Content-Type': 'application/json' })
+                        response.end(JSON.stringify({ message: 'Erro ao cadastrar pessoa' }))
+                    }
+                    novaPessoa.id = pessoas.length + 1
+                    pessoas.push(novaPessoa)
+
+                    // escrever arquivo no pessoas.json tipo json
+                    writeFile('pessoas.json', JSON.stringify(pessoas, null, 2), (err) => {
+                        if (err) {
+                            response.writeHead(500, { 'Content-Type': 'application/json' })
+                            response.end(JSON.stringify({ message: 'Erro ao cadastrar pessoa' }))
+                            return
+                        }
+                        response.writeHead(201, { 'Content-Type': 'application/json' })
+                        response.end(JSON.stringify(novaPessoa))
+                    })
+                })
+           
+        })
+    }else if( method ==='GET' && url.startsWith('/pessoas/')){
+
+        //  console.log(method,url)
    
         const pessoaId = url.split('/')[1]
 
@@ -56,86 +98,240 @@ const server = createServer((request, response) => {
                 }
             response.end()
         })
+        // console.log( method , url)
 
-    } else if (method === 'POST' && url === '/usuarios') {
+        // const pessoaId = url.split('/')[2]
+        // const encontrarPessoa = pessoas.find((pessoa)=> pessoa.id === pessoaId)
+
+        // if(!encontrarPessoa){
+        //     response.writeHead(404, {'Content-Type':'application/json'})
+        //     response.end(JSON.stringify({message: 'pessoa não encontrada'}))
+        // } else {
+        //     response.writeHead(200, ({'Content-Type':'application/json'}))
+        //     response.end(JSON.stringify(encontrarPessoa))
+        // }
+    }else if(method === 'POST' && url.startsWith('/pessoas/telefone/')){
+        const pessoaId = url.split('/')[2];
+        const index = pessoas.findIndex((usuario) => usuario.id === pessoaId);
+    
+        if (index === -1) {
+            response.writeHead(404, { 'Content-Type': 'application/json' });
+            response.end(JSON.stringify({ message: 'Pessoa não encontrada' }));
+        } else {
+            let body = '';
+    
+            request.on('data', (chunk) => {
+                body += chunk;
+            });
+    
+            request.on('end', () => {
+                const phoneNumbers = JSON.parse(body);
+    
+                const NumerosValidacao = phoneNumbers.every((num) =>
+                    Object.hasOwnProperty.call(num, 'tipo') &&
+                    Object.hasOwnProperty.call(num, 'numero')
+                );
+    
+                if (!NumerosValidacao) {
+                    response.writeHead(400, { 'Content-Type': 'application/json' });
+                    response.end(JSON.stringify({ message: 'Não foi possível criar um telefone' }));
+                } else {
+                    data[index] = {
+                        ...data[index],
+                        telefone: phoneNumbers,
+                    };
+    
+                    writeFile('./pessoas.json', JSON.stringify(data, null, 2), (err) => {
+                        if (err) {
+                            response.writeHead(500, { 'Content-Type': 'application/json' });
+                            response.end(JSON.stringify({ message: 'Erro ao cadastrar pessoa' }));
+                        } else {
+                            response.writeHead(201, { 'Content-Type': 'application/json' });
+                            response.end(JSON.stringify({ message: 'Telefone(s) adicionado(s) com sucesso!', usuario: data[index] }));
+                        }
+                    });
+                }
+            });
+        }
+    } else if(method === 'PUT' && url === '/pessoas/endereco/'){
+            let body = ''
+            request.on("data", (chunk)=>{
+              body += chunk
+            })
+            request.on('end',()=>{
+      if(!body){
+          response.writeHead(400,{'Content-Type':'application/json'})
+          response.end(JSON.stringify({message:"Corpo da solicitação vazio"}))
+         return
+      }
+       lerDadosPessoas((err,pessoas)=>{
+          if(err){
+              response.writeHead(500,{'Content-Type':'application/json'})
+              response.end(JSON.stringify({message:'Erro no servidor'}))
+      
+          }
+      
+          const indexEndereco = pessoas.findIndex((endereco)=>endereco.id === id)
+          if(indexEndereco === -1){
+              response.writeHead(404,{'Content-type':'application'})
+              response.end(JSON.stringify({message:'Endereço não encontrada'}))
+              return
+          }
+           const enderecoAtualizada = JSON.parse(body)
+           enderecoAtualizada.id = id
+           pessoas[indexEndereco] = enderecoAtualizada
+       })
+      
+              writeFile("pessoas.js", JSON.stringify(pessoas, null, 2), (err)=>{
+                  if(err){
+                      response.writeHead(500,{'Content-Type':'application/json'})
+                      response.end(JSON.stringify({message:"Erro interno no servidor"}))
+                      return
+                  }
+              })
+      
+              response.writeHead(201,{'Content-Type':'application/json'})
+              response.end(JSON.stringify(enderecoAtualizada))
+            })
+    }else if(method === 'PUT' && url === '/pessoas/telefone/'){
         let body = ''
-        request.on('data', (chunk) => {
+        request.on("data", (chunk) => {
             body += chunk
-        })
+        });
         request.on('end', () => {
             if (!body) {
                 response.writeHead(400, { 'Content-Type': 'application/json' })
-                response.end(JSON.stringify({ message: 'Corpo da solicitação vazio' }))
+                response.end(JSON.stringify({ message: "Corpo da solicitação vazio" }))
                 return
             }
-         
-                const novaPessoa = JSON.parse(body)
-                lerDadosPessoas((err, pessoas) => {
-                    if (err) {
-                        response.writeHead(500, { 'Content-Type': 'application/json' })
-                        response.end(JSON.stringify({ message: 'Erro ao cadastrar pessoa' }))
-                    }
-                    novaPessoa.id = pessoas.length + 1
-                    pessoas.push(novaPessoa)
-                    writeFile('pessoas.json', JSON.stringify(pessoas, null, 2), (err) => {
-                        if (err) {
-                            response.writeHead(500, { 'Content-Type': 'application/json' })
-                            response.end(JSON.stringify({ message: 'Erro ao cadastrar pessoa' }))
-                            return
-                        }
-                        response.writeHead(201, { 'Content-Type': 'application/json' })
-                        response.end(JSON.stringify(novaPessoa))
-                    })
-                })
-           
-        })
     
-    } else if (method === 'PUT' && url.startsWith('/usuarios/')) {
-        let body = '';
-        const id = url.split('/')[2];
-        const index = pessoas.findIndex((pessoa) => pessoa.id == id);
-    
-        request.on('data', (chunk) => {
-            body += chunk;
-        });
-    
-        request.on('end', (err) => {
-            if (err) {
-                response.writeHead(500, { 'Content-Type': 'application/json' });
-                response.end(JSON.stringify({ message: 'error no servidor' }));
-                return;
-            }
-    
-            const json = JSON.parse(body);
-            pessoas[index] = { ...pessoas[index], ...json };
-    
-            lerDadosPessoas((err, dadosPessoas) => {
+            lerDadosPessoas((err, pessoas) => {
                 if (err) {
-                    response.writeHead(500, { 'Content-Type': 'application/json' });
-                    response.end(JSON.stringify({ message: 'error no servidor' }));
-                    return;
+                    response.writeHead(500, { 'Content-Type': 'application/json' })
+                    response.end(JSON.stringify({ message: 'Erro no servidor' }))
+                    return
                 }
     
-                fs.writeFile('pessoas.json', JSON.stringify(dadosPessoas, null, 2), (err) => {
+                const indexTelefone = pessoas.findIndex((telefone) => telefone.id === id)
+                if (indexTelefone === -1) {
+                    response.writeHead(404, { 'Content-type': 'application/json' })
+                    response.end(JSON.stringify({ message: 'Telefone não encontrado' }))
+                    return
+                }
+    
+                const telefoneAtualizado = JSON.parse(body)
+                telefoneAtualizado.id = id
+                pessoas[indexTelefone] = telefoneAtualizado
+    
+                writeFile("pessoas.js", JSON.stringify(pessoas, null, 2), (err) => {
                     if (err) {
-                        response.writeHead(500, { 'Content-Type': 'application/json' });
-                        response.end(JSON.stringify({ message: 'error no servidor' }));
+                        response.writeHead(500, { 'Content-Type': 'application/json' })
+                        response.end(JSON.stringify({ message: "Erro interno no servidor" }))
                         return;
                     }
-    
-                    response.writeHead(200, { 'Content-Type': 'application/json' });
-                    response.end(JSON.stringify(json));
-                });
-            });
-        });
-    
-        
-    }else {
-        response.writeHead(404, { 'Content-Type': 'application/json' })
-        response.end(JSON.stringify({ message: 'Rota não encontrada' }))
+                    response.writeHead(201, { 'Content-Type': 'application/json' })
+                    response.end(JSON.stringify(telefoneAtualizado))
+                })
+            })
+        })
+
+//         let body = ''
+//         request.on("data", (chunk)=>{
+//           body += chunk
+//         })
+//         request.on('end',()=>{
+//   if(!body){
+//       response.writeHead(400,{'Content-Type':'application/json'})
+//       response.end(JSON.stringify({message:"Corpo da solicitação vazio"}))
+//      return
+//   }
+//    lerDadosPessoas((err,pessoas)=>{
+//       if(err){
+//           response.writeHead(500,{'Content-Type':'application/json'})
+//           response.end(JSON.stringify({message:'Erro no servidor'}))
+  
+//       }
+  
+//       const indexTelefone = pessoas.findIndex((telefone)=>telefone.id === id)
+//       if(indexTelefone === -1){
+//           response.writeHead(404,{'Content-type':'application'})
+//           response.end(JSON.stringify({message:'Endereço não encontrada'}))
+//           return
+//       }
+//        const telefoneAtualizado = JSON.parse(body)
+//        telefoneAtualizado.id = id
+//        pessoas[indexTelefone] = telefoneAtualizado
+//    })
+  
+//           writeFile("pessoas.js", JSON.stringify(pessoas, null, 2), (err)=>{
+//               if(err){
+//                   response.writeHead(500,{'Content-Type':'application/json'})
+//                   response.end(JSON.stringify({message:"Erro interno no servidor"}))
+//                   return
+//               }
+//           })
+  
+//           response.writeHead(201,{'Content-Type':'application/json'})
+//           response.end(JSON.stringify(telefoneAtualizado))
+//         })
+   }else if(method === 'DELETE' && url === '/pessoas'){
+    const id = parseInt(url.split('/')[2])
+    lerDadosPessoas((err,pessoas)=>{
+        if(err){
+            response.writeHead(500,{'Content-Type':'application/json'})
+                response.end(JSON.stringify({message:"Erro interno no servidor"}))
+                return
+        }
+        const indexPessoa = pessoas.findIndex((pessoa)=>pessoa.id === id)
+        if(indexPessoa === -1){
+        response.writeHead(404,{'Content-type':'application'})
+        response.end(JSON.stringify({message:'Pessoa não encontrada'}))
+         return    
     }
+
+    pessoas.splice(indexPessoa,1)
+    writeFile('pessoas.json',JSON.stringify(pessoas, null, 2),(err)=>{
+        if(err){
+            response.writeHead(500,{'Content-type':'application'})
+        response.end(JSON.stringify({message:'Error ao deletar pessoa'}))
+        return
+        }
+        response.writeHead(200,{"Content-Type":"application/json"})
+        response.end(JSON.stringify({message:"Pessoa deletada"}))
+    })
+    })
+ }else if(method === 'DELETE' && url.startsWith('/pessoas/telefones/')){
+    const idPessoa = url.split('/')[2]
+    lerDadosPessoas((err, pessoas)=>{
+        if(err){
+            response.writeHead(500, {'Content-Type':'application/json'})
+            response.end(JSON.stringify({ message:'erro interno no servidor'}))
+            return;
+        }
+
+        const indexPessoa = pessoas.findIndex((pessoa)=>pessoa.id === idPessoa)
+        if(indexPessoa === -1){
+            response.writeHead(404, {'Content-type':'application/json'})
+            response.end(JSON.stringify({message:'pessoa nao encontrada'}))
+            return
+        }
+        writeFile('pessoas.json',JSON.stringify(pessoas, null, 2), (err)=>{
+            if(err){
+                response.writeHead(500, {'Content-type':'application/json'})
+                response.end(JSON.stringify({message:'erro ao atualizar'}))
+                return
+            }
+            response.writeHead(200, { 'Content-Type': 'application/json' })
+            response.end(JSON.stringify({ message: 'Telefone removido com sucesso' }))
+        })
+    })
+ } else{
+        response.writeHead(404, {'Content-Type':'application/json'})
+        response.end(JSON.stringify({message: 'Rota não encontrada'}))
+    }
+
 })
 
-server.listen(PORT, () => {
-    console.log(`Server on PORT: ${PORT}`)
+server.listen(PORT, ()=>{
+    console.log(`servidor on PORT ${PORT}`)
 })

@@ -13,10 +13,9 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "nodemon": "^3.1.0"
+    "nodemon": "^3.1.4"
   },
   "dependencies": {
-    "formidable": "^3.5.1",
     "uuid": "^9.0.1"
   }
 }
