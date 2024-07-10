@@ -76,43 +76,37 @@ const server = createServer((request, response)=>{
     }else if( method ==='GET' && url.startsWith('/pessoas/')){
 
         //  console.log(method,url)
-   
-        const pessoaId = url.split('/')[1]
 
+   
+        const pessoaId = url.split('/')[2]
+        console.log(`id: ${pessoaId}`) //tudo certo
+        
       
         lerDadosPessoas((err, pessoas)=>{
             if(err){
                 response.writeHead(500, {'Content-Type':'application/json'})
                 response.end(JSON.stringify({message: 'Erro no servidor'}))
-            }
+            } 
           
-                const pessoaFind = pessoas.find((pessoa) => pessoa.id === pessoaId)
+                const pessoaFind = pessoas.find((pessoa)=> pessoa.id == pessoaId)
+                console.log(pessoaFind)
 
-                if(pessoaFind){
+                if(!pessoaFind){
+                    response.writeHead(404,{'Content-Type':'application/json'})
+                    response.end(JSON.stringify({ message: 'Pessoa não encontrada' }))
+            
+                } else{
                     response.writeHead(200,{'Content-Type':'application/json'})
                     response.end(JSON.stringify(pessoaFind))
                     return;
-                } else{
-                    response.writeHead(404,{'Content-Type':'application/json'})
-                    response.end(JSON.stringify({ message: 'Pessoa não encontrada' }))
                 }
             response.end()
+            // console.log(pessoas)
         })
-        // console.log( method , url)
 
-        // const pessoaId = url.split('/')[2]
-        // const encontrarPessoa = pessoas.find((pessoa)=> pessoa.id === pessoaId)
-
-        // if(!encontrarPessoa){
-        //     response.writeHead(404, {'Content-Type':'application/json'})
-        //     response.end(JSON.stringify({message: 'pessoa não encontrada'}))
-        // } else {
-        //     response.writeHead(200, ({'Content-Type':'application/json'}))
-        //     response.end(JSON.stringify(encontrarPessoa))
-        // }
     }else if(method === 'POST' && url.startsWith('/pessoas/telefone/')){
-        const pessoaId = url.split('/')[2];
-        const index = pessoas.findIndex((usuario) => usuario.id === pessoaId);
+        const pessoaId = url.split('/')[3];
+        const index = pessoas.findIndex((usuario) => usuario.id == pessoaId);
     
         if (index === -1) {
             response.writeHead(404, { 'Content-Type': 'application/json' });
@@ -154,6 +148,8 @@ const server = createServer((request, response)=>{
             });
         }
     } else if(method === 'PUT' && url === '/pessoas/endereco/'){
+        pessoaId = url.split('/')[3]
+
             let body = ''
             request.on("data", (chunk)=>{
               body += chunk
@@ -171,7 +167,7 @@ const server = createServer((request, response)=>{
       
           }
       
-          const indexEndereco = pessoas.findIndex((endereco)=>endereco.id === id)
+          const indexEndereco = pessoas.findIndex((endereco)=>endereco.id == id)
           if(indexEndereco === -1){
               response.writeHead(404,{'Content-type':'application'})
               response.end(JSON.stringify({message:'Endereço não encontrada'}))
@@ -282,7 +278,7 @@ const server = createServer((request, response)=>{
                 response.end(JSON.stringify({message:"Erro interno no servidor"}))
                 return
         }
-        const indexPessoa = pessoas.findIndex((pessoa)=>pessoa.id === id)
+        const indexPessoa = pessoas.findIndex((pessoa)=>pessoa.id == id)
         if(indexPessoa === -1){
         response.writeHead(404,{'Content-type':'application'})
         response.end(JSON.stringify({message:'Pessoa não encontrada'}))
@@ -301,7 +297,7 @@ const server = createServer((request, response)=>{
     })
     })
  }else if(method === 'DELETE' && url.startsWith('/pessoas/telefones/')){
-    const idPessoa = url.split('/')[2]
+    const idPessoa = url.split('/')[3]
     lerDadosPessoas((err, pessoas)=>{
         if(err){
             response.writeHead(500, {'Content-Type':'application/json'})
@@ -309,7 +305,7 @@ const server = createServer((request, response)=>{
             return;
         }
 
-        const indexPessoa = pessoas.findIndex((pessoa)=>pessoa.id === idPessoa)
+        const indexPessoa = pessoas.findIndex((pessoa)=>pessoa.id == idPessoa)
         if(indexPessoa === -1){
             response.writeHead(404, {'Content-type':'application/json'})
             response.end(JSON.stringify({message:'pessoa nao encontrada'}))
